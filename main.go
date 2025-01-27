@@ -24,7 +24,7 @@ func main() {
 		case "complete":
 			fmt.Println("Yet to implement")
 		case "delete":
-			fmt.Println("Yet to implement")
+			delete(task)
 		case "list":
 			list()
 		case "help":

@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -15,40 +16,44 @@ var filelock sync.RWMutex
 
 var header = []string{"ID", "TASK NAME", "CREATED"}
 
-func list() error {
+func loadfile(filename string, clean bool) *os.File {
+	var file *os.File
+	var err error
+	if clean {
+		file, err = os.OpenFile(filename, os.O_CREATE, 0644)
 
-	// initialize the csv reader
-	file, err := os.Open(CSV_FILE)
+	} else {
+		file, err = os.OpenFile(filename, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
+	}
 
 	if err != nil {
-		fmt.Println("Error while reading the file", err)
+		panic("Error while opening the file")
 	}
+	return file
+}
+
+func parse_csv(filename string) [][]string {
+	// initialize the csv reader
+	file := loadfile(filename, false)
+
+	filelock.RLock()
 
 	defer file.Close()
 
 	reader := csv.NewReader(file)
-	filelock.RLock()
-	record, err := reader.ReadAll()
+	records, err := reader.ReadAll()
+
+	filelock.RUnlock()
+
 	if err != nil {
-		fmt.Println("Error reading records")
-		return err
+		panic("Error reading records")
 	}
 
-	fmt.Println(strings.Join(header, "\t\t"))
-	for i, r := range record {
-		fmt.Print(i, "\t\t")
-		fmt.Println(strings.Join(r, "\t\t"))
-	}
-	filelock.RUnlock()
-	return nil
+	return records
 }
 
-func add(task string) error {
-	file, err := os.OpenFile(CSV_FILE, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-
-	if err != nil {
-		fmt.Println("Error while opening the file", err)
-	}
+func write_csv(filename string, record [][]string, clean bool) error {
+	file := loadfile(filename, clean)
 
 	defer file.Close()
 
@@ -56,14 +61,44 @@ func add(task string) error {
 
 	filelock.Lock()
 
-	record := [][]string{{task, time.Now().Local().String()}}
 	w.WriteAll(record)
 
 	if err := w.Error(); err != nil {
-		fmt.Println("error writing csv:", err)
-		return err
+		panic("error writing csv:")
 	}
 
 	filelock.Unlock()
 	return nil
+}
+
+func list() {
+	// initialize the csv reader
+	records := parse_csv(CSV_FILE)
+
+	fmt.Println(strings.Join(header, "\t\t"))
+	for i, record := range records {
+		fmt.Print(i, "\t\t")
+		fmt.Println(strings.Join(record, "\t\t"))
+	}
+}
+
+func add(task string) error {
+
+	record := [][]string{{task, time.Now().Local().String()}}
+
+	write_csv(CSV_FILE, record, false)
+
+	return nil
+}
+
+func delete(id string) {
+	records := parse_csv(CSV_FILE)
+	var new_record [][]string
+	for i, record := range records {
+		if a, _ := strconv.Atoi(id); a == i {
+			continue
+		}
+		new_record = append(new_record, record)
+	}
+	write_csv(CSV_FILE, new_record, true)
 }
