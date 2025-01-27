@@ -7,15 +7,20 @@ import (
 
 func main() {
 	fmt.Println("ToDo App")
-	if len(os.Args) <= 1 {
+	params_len := len(os.Args)
+	if params_len <= 1 {
 		fmt.Println("No command specified")
 		// Print the proper message here like how to use the tool
 	} else {
 		cmd := os.Args[1]
+		var task string
+		if params_len == 3 {
+			task = os.Args[2]
+		}
 		fmt.Println("Command: ", cmd)
 		switch cmd {
 		case "add":
-			fmt.Println("Yet to implement")
+			add(task)
 		case "complete":
 			fmt.Println("Yet to implement")
 		case "delete":

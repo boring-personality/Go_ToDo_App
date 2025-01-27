@@ -3,36 +3,67 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
-	"log"
 	"os"
 	"strings"
+	"sync"
+	"time"
 )
 
 const CSV_FILE = "task_data/tasks.csv"
 
-func getreader(filename string) *csv.Reader {
-	file, err := os.Open(filename)
+var filelock sync.RWMutex
 
-	if err != nil {
-		log.Fatal("Error while reading the file", err)
-	}
-
-	return csv.NewReader(file)
-}
+var header = []string{"ID", "TASK NAME", "CREATED"}
 
 func list() error {
 
 	// initialize the csv reader
-	reader := getreader(CSV_FILE)
+	file, err := os.Open(CSV_FILE)
 
+	if err != nil {
+		fmt.Println("Error while reading the file", err)
+	}
+
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	filelock.RLock()
 	record, err := reader.ReadAll()
 	if err != nil {
 		fmt.Println("Error reading records")
 		return err
 	}
 
-	for _, r := range record {
+	fmt.Println(strings.Join(header, "\t\t"))
+	for i, r := range record {
+		fmt.Print(i, "\t\t")
 		fmt.Println(strings.Join(r, "\t\t"))
 	}
+	filelock.RUnlock()
+	return nil
+}
+
+func add(task string) error {
+	file, err := os.OpenFile(CSV_FILE, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+
+	if err != nil {
+		fmt.Println("Error while opening the file", err)
+	}
+
+	defer file.Close()
+
+	w := csv.NewWriter(file)
+
+	filelock.Lock()
+
+	record := [][]string{{task, time.Now().Local().String()}}
+	w.WriteAll(record)
+
+	if err := w.Error(); err != nil {
+		fmt.Println("error writing csv:", err)
+		return err
+	}
+
+	filelock.Unlock()
 	return nil
 }
