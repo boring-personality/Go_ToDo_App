@@ -8,7 +8,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "tasks",
+	Use:   "todo",
 	Short: "ToDo tasks manager",
 	Long:  "Manage tasks efficiently by adding deleting marking them complete",
 }
