@@ -7,16 +7,15 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"text/tabwriter"
 	"time"
 
 	"github.com/mergestat/timediff"
 )
 
-const CSV_FILE = "task_data/tasks.csv"
-
 var filelock sync.RWMutex
 
-var header = []string{"ID", "TASK NAME", "CREATED"}
+var CSV_FILE = "task_data/tasks.csv"
 
 func loadfile(filename string, clean bool) *os.File {
 	var file *os.File
@@ -73,22 +72,46 @@ func write_csv(filename string, record [][]string, clean bool) error {
 	return nil
 }
 
-func list() {
+func listall() {
+	header := []string{"ID", "Task", "Created", "Status"}
+	// tabwriter intialization
+	tw := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.TabIndent)
 	// initialize the csv reader
 	records := parse_csv(CSV_FILE)
 
-	fmt.Println(strings.Join(header, "\t\t"))
+	fmt.Fprintln(tw, strings.Join(header, "\t"))
 	for i, record := range records {
 		temp, _ := time.Parse(time.RFC822, record[1])
 		record[1] = timediff.TimeDiff(temp)
-		fmt.Print(i, "\t\t")
-		fmt.Println(strings.Join(record, "\t\t"))
+		fmt.Fprint(tw, i+1, "\t")
+		fmt.Fprintln(tw, strings.Join(record, "\t"))
 	}
+	tw.Flush()
+}
+
+func list() {
+	header := []string{"ID", "Task", "Created"}
+	// tabwriter intialization
+	tw := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.TabIndent)
+	// initialize the csv reader
+	records := parse_csv(CSV_FILE)
+	i := 0
+	fmt.Fprintln(tw, strings.Join(header, "\t"))
+	for _, record := range records {
+		if record[2] == "incomplete" {
+			temp, _ := time.Parse(time.RFC822, record[1])
+			record[1] = timediff.TimeDiff(temp)
+			fmt.Fprint(tw, i+1, "\t")
+			fmt.Fprintln(tw, strings.Join(record[:2], "\t"))
+			i++
+		}
+	}
+	tw.Flush()
 }
 
 func add(task string) error {
 
-	record := [][]string{{task, time.Now().Format(time.RFC822)}}
+	record := [][]string{{task, time.Now().Format(time.RFC822), "incomplete"}}
 
 	write_csv(CSV_FILE, record, false)
 
@@ -99,8 +122,20 @@ func delete(id string) {
 	records := parse_csv(CSV_FILE)
 	var new_record [][]string
 	for i, record := range records {
-		if a, _ := strconv.Atoi(id); a == i {
+		if a, _ := strconv.Atoi(id); a == i+1 {
 			continue
+		}
+		new_record = append(new_record, record)
+	}
+	write_csv(CSV_FILE, new_record, true)
+}
+
+func complete(id string) {
+	records := parse_csv(CSV_FILE)
+	var new_record [][]string
+	for i, record := range records {
+		if a, _ := strconv.Atoi(id); a == i+1 {
+			record[2] = "Completed"
 		}
 		new_record = append(new_record, record)
 	}

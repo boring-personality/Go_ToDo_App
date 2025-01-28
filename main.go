@@ -22,11 +22,13 @@ func main() {
 		case "add":
 			add(task)
 		case "complete":
-			fmt.Println("Yet to implement")
+			complete(task)
 		case "delete":
 			delete(task)
 		case "list":
 			list()
+		case "listall":
+			listall()
 		case "help":
 			fmt.Println("Yet to implement")
 		default:
