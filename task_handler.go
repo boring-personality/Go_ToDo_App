@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/mergestat/timediff"
 )
 
 const CSV_FILE = "task_data/tasks.csv"
@@ -20,7 +22,7 @@ func loadfile(filename string, clean bool) *os.File {
 	var file *os.File
 	var err error
 	if clean {
-		file, err = os.OpenFile(filename, os.O_CREATE, 0644)
+		file, err = os.Create(filename)
 
 	} else {
 		file, err = os.OpenFile(filename, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
@@ -77,6 +79,8 @@ func list() {
 
 	fmt.Println(strings.Join(header, "\t\t"))
 	for i, record := range records {
+		temp, _ := time.Parse(time.RFC822, record[1])
+		record[1] = timediff.TimeDiff(temp)
 		fmt.Print(i, "\t\t")
 		fmt.Println(strings.Join(record, "\t\t"))
 	}
@@ -84,7 +88,7 @@ func list() {
 
 func add(task string) error {
 
-	record := [][]string{{task, time.Now().Local().String()}}
+	record := [][]string{{task, time.Now().Format(time.RFC822)}}
 
 	write_csv(CSV_FILE, record, false)
 
